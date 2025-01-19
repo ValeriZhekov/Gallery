@@ -73,7 +73,7 @@
 <body>
     <div class="register-container">
         <h1>Register</h1>
-        <form action="register_process.php" method="POST">
+        <form action="process_register.php" method="POST">
             <input type="text" name="username" placeholder="Username" required>
             <input type="password" name="password" placeholder="Password" required>
             <input type="password" name="confirm_password" placeholder="Confirm Password" required>
