@@ -76,9 +76,52 @@ if ($stmt !== false) {
     }
 }
 sqlsrv_free_stmt($stmt);
+
+// handle Merge Galleries
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['merge_galleries'])) {
+    $source_gallery = $_POST['source_gallery'];
+    $destination_gallery = $_POST['destination_gallery'];
+
+    if (!empty($source_gallery) && !empty($destination_gallery) && $source_gallery !== $destination_gallery) {
+        //add images to destination gallery
+        $query = "UPDATE Images SET gallery_id = ? WHERE gallery_id = ?";
+        $params = [$destination_gallery, $source_gallery];
+        $stmt = sqlsrv_query($conn, $query, $params);
+
+        if ($stmt === false) {
+            die(print_r(sqlsrv_errors(), true));
+        }
+        sqlsrv_free_stmt($stmt);
+
+        //remove the source gallery
+        $query = "DELETE FROM Galleries WHERE id = ?";
+        $params = [$source_gallery];
+        $stmt = sqlsrv_query($conn, $query, $params);
+
+        if ($stmt === false) {
+            die(print_r(sqlsrv_errors(), true));
+        }
+        sqlsrv_free_stmt($stmt);
+
+        // remove the source gallery from the $galleries array
+    foreach ($galleries as $key => $gallery) {
+        if ($gallery['id'] == $source_gallery) {
+            unset($galleries[$key]);
+            break;
+        }
+    }
+    //  reindex the array 
+    $galleries = array_values($galleries);
+
+        echo "<p style='color: green;'>Galleries merged successfully!</p>";
+    } else {
+        echo "<p style='color: red;'>Please select two different galleries to merge.</p>";
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -90,6 +133,7 @@ sqlsrv_free_stmt($stmt);
             padding: 0;
             background-color: #f4f4f4;
         }
+
         .gallery-container {
             width: 80%;
             margin: 20px auto;
@@ -98,6 +142,7 @@ sqlsrv_free_stmt($stmt);
             padding: 20px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
+
         .gallery img {
             width: 150px;
             height: 150px;
@@ -106,21 +151,26 @@ sqlsrv_free_stmt($stmt);
             border: 1px solid #ddd;
             border-radius: 5px;
         }
+
         .logout {
             text-align: center;
             margin-top: 20px;
         }
+
         .logout a {
             text-decoration: none;
             color: #007bff;
             font-weight: bold;
         }
+
         .form-section {
             margin-top: 20px;
         }
+
         .form-section form {
             margin-bottom: 20px;
         }
+
         .form-section input,
         .form-section button,
         .form-section select {
@@ -132,11 +182,12 @@ sqlsrv_free_stmt($stmt);
         }
     </style>
 </head>
+
 <body>
     <div class="gallery-container">
         <h1>Photo Gallery</h1>
         <div class="form-section">
-        
+
             <form method="POST" action="">
                 <h3>Create a New Gallery</h3>
                 <input type="text" name="gallery_name" placeholder="Gallery Name" required>
@@ -148,11 +199,35 @@ sqlsrv_free_stmt($stmt);
                 <select name="gallery_id" required>
                     <option value="">Select a Gallery</option>
                     <?php foreach ($galleries as $gallery): ?>
-                        <option value="<?php echo $gallery['id']; ?>"><?php echo htmlspecialchars($gallery['name']); ?></option>
+                        <option value="<?php echo $gallery['id']; ?>"><?php echo htmlspecialchars($gallery['name']); ?>
+                        </option>
                     <?php endforeach; ?>
                 </select>
                 <input type="file" name="image" accept="image/*" required>
                 <button type="submit" name="upload_image">Upload Image</button>
+            </form>
+
+            <form method="POST" action="">
+                <h3>Merge Two Galleries</h3>
+                <label for="source_gallery">Source Gallery:</label>
+                <select name="source_gallery" id="source_gallery" required>
+                    <option value="">Select Source Gallery</option>
+                    <?php foreach ($galleries as $gallery): ?>
+                        <option value="<?php echo $gallery['id']; ?>"><?php echo htmlspecialchars($gallery['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <label for="destination_gallery">Destination Gallery:</label>
+                <select name="destination_gallery" id="destination_gallery" required>
+                    <option value="">Select Destination Gallery</option>
+                    <?php foreach ($galleries as $gallery): ?>
+                        <option value="<?php echo $gallery['id']; ?>"><?php echo htmlspecialchars($gallery['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <button type="submit" name="merge_galleries">Merge Galleries</button>
             </form>
         </div>
         <div class="gallery">
@@ -167,9 +242,9 @@ sqlsrv_free_stmt($stmt);
 
                 if ($stmt !== false):
                     while ($image = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)):
-                ?>
-                    <img src="<?php echo htmlspecialchars($image['file_path']); ?>" alt="Gallery Image">
-                <?php
+                        ?>
+                        <img src="<?php echo htmlspecialchars($image['file_path']); ?>" alt="Gallery Image">
+                        <?php
                     endwhile;
                     sqlsrv_free_stmt($stmt);
                 endif;
@@ -181,6 +256,7 @@ sqlsrv_free_stmt($stmt);
         </div>
     </div>
 </body>
+
 </html>
 <?php
 sqlsrv_close($conn);
