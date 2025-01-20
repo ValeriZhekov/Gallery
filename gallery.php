@@ -104,14 +104,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['merge_galleries'])) {
         sqlsrv_free_stmt($stmt);
 
         // remove the source gallery from the $galleries array
-    foreach ($galleries as $key => $gallery) {
-        if ($gallery['id'] == $source_gallery) {
-            unset($galleries[$key]);
-            break;
+        foreach ($galleries as $key => $gallery) {
+            if ($gallery['id'] == $source_gallery) {
+                unset($galleries[$key]);
+                break;
+            }
         }
-    }
-    //  reindex the array 
-    $galleries = array_values($galleries);
+        //  reindex the array 
+        $galleries = array_values($galleries);
 
         echo "<p style='color: green;'>Galleries merged successfully!</p>";
     } else {
@@ -126,61 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['merge_galleries'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Photo Gallery</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-
-        .gallery-container {
-            width: 80%;
-            margin: 20px auto;
-            background: #fff;
-            border: 1px solid #ccc;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .gallery img {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            margin: 5px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-
-        .logout {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .logout a {
-            text-decoration: none;
-            color: #007bff;
-            font-weight: bold;
-        }
-
-        .form-section {
-            margin-top: 20px;
-        }
-
-        .form-section form {
-            margin-bottom: 20px;
-        }
-
-        .form-section input,
-        .form-section button,
-        .form-section select {
-            display: block;
-            margin: 10px 0;
-            padding: 10px;
-            width: 100%;
-            max-width: 300px;
-        }
-    </style>
+    <link rel="stylesheet" href="gallery_styles.css">
 </head>
 
 <body>
@@ -234,23 +180,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['merge_galleries'])) {
             <h2>Your Galleries</h2>
             <?php foreach ($galleries as $gallery): ?>
                 <h3><?php echo htmlspecialchars($gallery['name']); ?></h3>
-                <?php
-                // fetch images for the gallery
-                $query = "SELECT file_path FROM Images WHERE gallery_id = ?";
-                $params = [$gallery['id']];
-                $stmt = sqlsrv_query($conn, $query, $params);
+                <div class="gallery-images">
+                    <?php
+                    // Fetch images for the gallery
+                    $query = "SELECT id, file_path FROM Images WHERE gallery_id = ?";
+                    $params = [$gallery['id']];
+                    $stmt = sqlsrv_query($conn, $query, $params);
 
-                if ($stmt !== false):
-                    while ($image = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)):
-                        ?>
-                        <img src="<?php echo htmlspecialchars($image['file_path']); ?>" alt="Gallery Image">
-                        <?php
-                    endwhile;
-                    sqlsrv_free_stmt($stmt);
-                endif;
-                ?>
+                    if ($stmt !== false):
+                        while ($image = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)):
+                            ?>
+                            <div class="image-container" data-id="<?php echo $image['id']; ?>">
+                                <img src="<?php echo htmlspecialchars($image['file_path']); ?>" alt="Gallery Image">
+                                <button class="delete-btn" onclick="deleteImage(<?php echo $image['id']; ?>)">X</button>
+                            </div>
+                            <?php
+                        endwhile;
+                        sqlsrv_free_stmt($stmt);
+                    endif;
+                    ?>
+                </div>
             <?php endforeach; ?>
         </div>
+
+        <script>
+            function deleteImage(imageId) {
+                if (!confirm("Are you sure you want to delete this image?")) return;
+
+                // send request to delete image
+                fetch('delete_image.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ imageId }),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // remove image from the DOM
+                            document.querySelector(`.image-container[data-id="${imageId}"]`).remove();
+                            alert("Image deleted successfully.");
+                        } else {
+                            alert("Failed to delete image: " + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error deleting image:", error);
+                        alert("An error occurred.");
+                    });
+            }
+        </script>
         <div class="logout">
             <a href="logout.php">Logout</a>
         </div>
