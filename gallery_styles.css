@@ -1,100 +1,160 @@
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-
-        .gallery-container {
-            width: 80%;
-            margin: 20px auto;
-            background: #fff;
-            border: 1px solid #ccc;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .gallery img {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            margin: 5px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-
-        .logout {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .logout a {
-            text-decoration: none;
-            color: #007bff;
-            font-weight: bold;
-        }
-
-        .form-section {
-            margin-top: 20px;
-        }
-
-        .form-section form {
-            margin-bottom: 20px;
-        }
-
-        .form-section input,
-        .form-section button,
-        .form-section select {
-            display: block;
-            margin: 10px 0;
-            padding: 10px;
-            width: 100%;
-            max-width: 300px;
-        }
-        .gallery {
-    margin: 20px;
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #e9ecef; 
+    color: #333;
 }
 
-.gallery h3 {
-    margin-top: 20px;
+.gallery-container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 40px auto;
+    background: #fff;
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+
+h1 {
+    font-size: 2.5rem;
+    text-align: center;
+    color: #343a40;
+    margin-bottom: 20px;
+}
+
+h3 {
+    font-size: 1.5rem;
+    color: #495057;
+    margin-bottom: 10px;
+}
+
+
+.form-section {
+    margin-bottom: 40px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    background-color: #f8f9fa;
+}
+
+.form-section form {
+    margin-bottom: 20px;
+}
+
+.form-section input,
+.form-section button,
+.form-section select {
+    display: block;
+    margin: 10px 0;
+    padding: 10px;
+    width: 100%;
+    max-width: 400px;
+    font-size: 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.form-section button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.form-section button:hover {
+    background-color: #0056b3;
+}
+
+.form-section label {
+    font-weight: bold;
+    margin-top: 10px;
+    display: block;
+}
+
+/* Gallery styles */
+.gallery {
+    margin-top: 30px;
+}
+
+.gallery h2 {
+    font-size: 2rem;
+    color: #343a40;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #6c757d;
+    padding-bottom: 10px;
 }
 
 .gallery-images {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
 }
 
 .image-container {
     position: relative;
-    width: 150px;
-    height: 150px;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.image-container:hover {
+    transform: scale(1.05);
 }
 
 .image-container img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    border-radius: 8px;
 }
 
+/* Delete button */
 .image-container .delete-btn {
     position: absolute;
-    top: 5px;
-    right: 5px;
+    top: 10px;
+    right: 10px;
     display: none;
-    background: red;
+    background: rgba(220, 53, 69, 0.8);
     color: white;
     border: none;
     border-radius: 50%;
-    width: 25px;
-    height: 25px;
+    width: 30px;
+    height: 30px;
     cursor: pointer;
+    font-size: 1rem;
+    line-height: 30px;
+    text-align: center;
     font-weight: bold;
+    transition: background-color 0.3s ease;
 }
 
 .image-container:hover .delete-btn {
     display: block;
 }
-    
+
+.image-container .delete-btn:hover {
+    background-color: rgba(220, 53, 69, 1);
+}
+
+.logout {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.logout a {
+    text-decoration: none;
+    color: #007bff;
+    font-weight: bold;
+    font-size: 1.2rem;
+    transition: color 0.3s ease;
+}
+
+.logout a:hover {
+    color: #0056b3;
+}
