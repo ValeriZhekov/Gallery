@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_gallery'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_image'])) {
     $gallery_id = $_POST['gallery_id'];
     $target_dir = "uploads/";
-    $target_file = $target_dir . basename($_FILES["image"]["name"]);
+    $target_file = $target_dir .time(). basename($_FILES["image"]["name"]);
     $upload_ok = 1;
 
     // move the uploaded file to the server

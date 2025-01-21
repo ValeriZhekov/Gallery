@@ -1,52 +1,61 @@
 <?php
 session_start();
-require 'db_config.php';
 
-// ensure the user is logged in
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    echo json_encode(['success' => false, 'message' => 'Not authorized']);
     exit;
 }
 
-// get input data
+require_once 'db_config.php';
+
 $data = json_decode(file_get_contents('php://input'), true);
-$imageId = $data['imageId'] ?? null;
 
-if (!$imageId) {
-    echo json_encode(['success' => false, 'message' => 'Invalid image ID']);
+if (!isset($data['imageId'])) {
+    echo json_encode(['success' => false, 'message' => 'No image ID provided']);
     exit;
 }
 
-// fetch the image to ensure it belongs to the user
-$query = "SELECT filename FROM Images WHERE id = ? AND username = ?";
-$params = [$imageId, $_SESSION['username']];
-$stmt = sqlsrv_query($conn, $query, $params);
+$imageId = $data['imageId'];
 
-if ($stmt === false || !($image = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC))) {
-    echo json_encode(['success' => false, 'message' => 'Image not found or unauthorized']);
-    exit;
-}
-
-sqlsrv_free_stmt($stmt);
-
-// delete image from the filesystem
-$filepath = 'uploads/' . $image['filename'];
-if (file_exists($filepath)) {
-    unlink($filepath);
-}
-
-// remove image from the database
-$query = "DELETE FROM Images WHERE id = ?";
+$query = "SELECT file_path FROM Images WHERE id = ?";
 $params = [$imageId];
 $stmt = sqlsrv_query($conn, $query, $params);
 
 if ($stmt === false) {
-    echo json_encode(['success' => false, 'message' => 'Failed to delete image']);
+    echo json_encode(['success' => false, 'message' => 'Database error: ' . print_r(sqlsrv_errors(), true)]);
+    exit;
+}
+
+$image = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+
+if (!$image) {
+    echo json_encode(['success' => false, 'message' => 'Image not found or unauthorized']);
+    exit;
+}
+
+
+$fileName = $image['file_path']; 
+
+
+if (file_exists($fileName)) {
+    if (!unlink($fileName)) {
+        echo json_encode(['success' => false, 'message' => 'Failed to delete image file']);
+        exit;
+    }
+} else {
+    echo json_encode(['success' => false, 'message' => 'Image file not found on the server']);
+    exit;
+}
+
+$query = "DELETE FROM Images WHERE id = ?";
+$stmt = sqlsrv_query($conn, $query, $params);
+
+if ($stmt === false) {
+    echo json_encode(['success' => false, 'message' => 'Failed to delete image record from database: ' . print_r(sqlsrv_errors(), true)]);
     exit;
 }
 
 sqlsrv_free_stmt($stmt);
 
-echo json_encode(['success' => true]);
+echo json_encode(['success' => true, 'message' => 'Image deleted successfully']);
 exit;
-?>
