@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_gallery'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_image'])) {
     $gallery_id = $_POST['gallery_id'];
     $target_dir = "uploads/";
-    $target_file = $target_dir .time(). basename($_FILES["image"]["name"]);
+    $target_file = $target_dir . time() . basename($_FILES["image"]["name"]);
     $upload_ok = 1;
 
     // move the uploaded file to the server
@@ -182,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['merge_galleries'])) {
                 <h3><?php echo htmlspecialchars($gallery['name']); ?></h3>
                 <div class="gallery-images">
                     <?php
-                    // Fetch images for the gallery
+                    
                     $query = "SELECT id, file_path FROM Images WHERE gallery_id = ?";
                     $params = [$gallery['id']];
                     $stmt = sqlsrv_query($conn, $query, $params);
@@ -191,7 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['merge_galleries'])) {
                         while ($image = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)):
                             ?>
                             <div class="image-container" data-id="<?php echo $image['id']; ?>">
-                                <img src="<?php echo htmlspecialchars($image['file_path']); ?>" alt="Gallery Image">
+                                <img src="<?php echo htmlspecialchars($image['file_path']); ?>" alt="Gallery Image"
+                                    onclick="showLightbox('<?php echo htmlspecialchars($image['file_path']); ?>')">
                                 <button class="delete-btn" onclick="deleteImage(<?php echo $image['id']; ?>)">X</button>
                             </div>
                             <?php
@@ -203,34 +204,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['merge_galleries'])) {
             <?php endforeach; ?>
         </div>
 
-        <script>
-            function deleteImage(imageId) {
-                if (!confirm("Are you sure you want to delete this image?")) return;
+       
+        <div class="lightbox" id="lightbox">
+            <button class="close-btn" onclick="closeLightbox()">X</button>
+            <img id="lightbox-image" src="" alt="Enlarged Image">
+        </div>
+    </div>
 
-                // send request to delete image
-                fetch('delete_image.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ imageId }),
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // remove image from the DOM
-                            document.querySelector(`.image-container[data-id="${imageId}"]`).remove();
-                            alert("Image deleted successfully.");
-                        } else {
-                            alert("Failed to delete image: " + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error deleting image:", error);
-                        alert("An error occurred.");
-                    });
-            }
-        </script>
+        <script src="gallery.js"></script>
+
+
         <div class="logout">
             <a href="logout.php">Logout</a>
         </div>
