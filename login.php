@@ -1,23 +1,11 @@
-<?php
-session_start();
-
-if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
-    header("Location: gallery.php");
-    exit;
-}
-
-$error_message = isset($_GET['error']) ? $_GET['error'] : '';
-?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
     <link rel="stylesheet" href="login_styles.css">
 </head>
-
 <body>
     <div class="login-container">
         <h1>Login</h1>
@@ -26,11 +14,7 @@ $error_message = isset($_GET['error']) ? $_GET['error'] : '';
             <input type="password" name="password" placeholder="Password" required>
             <button type="submit">Login</button>
         </form>
-        <button class="register-button" onclick="location.href='register.php'">Register</button>
-        <?php if ($error_message): ?>
-            <p class="error-message"><?php echo htmlspecialchars($error_message); ?></p>
-        <?php endif; ?>
+        <a href="register.php" class="register-button">Register</a>
     </div>
 </body>
-
 </html>

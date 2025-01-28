@@ -1,57 +1,31 @@
 <?php
-require_once 'db_config.php';
+include 'db_config.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username']);
-    $password = trim($_POST['password']);
+    $username = $_POST['username'];
+    $password = $_POST['password'];
 
+    $stmt = $conn->prepare("SELECT id, password FROM Users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-    if (empty($username) || empty($password)) {
-        $error_message = "Please provide both username and password.";
-        header("Location: login.php?error=" . urlencode($error_message));
-        exit;
-    }
-
-
-    $query = "SELECT * FROM Users WHERE Username = ?";
-    $params = [$username];
-
-
-    $stmt = sqlsrv_query($conn, $query, $params);
-
-    if ($stmt === false) {
-        die(print_r(sqlsrv_errors(), true));
-    }
-
-
-    $user = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-
-    if ($user) {
-
-        if (password_verify($password, $user['Password'])) {
-
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+        if (password_verify($password, $user['password'])) {
             session_start();
-            $_SESSION['loggedin'] = true;
-            $_SESSION['username'] = $user['Username'];
-
-
+            $_SESSION['user_id'] = $user['id'];
+            // Redirect to gallery page
             header("Location: gallery.php");
             exit;
         } else {
-            $error_message = "Invalid username or password.";
+            echo "Invalid credentials.";
         }
     } else {
-        $error_message = "Invalid username or password.";
+        echo "Invalid credentials.";
     }
 
-
-    sqlsrv_free_stmt($stmt);
-
-
-    header("Location: login.php?error=" . urlencode($error_message));
-    exit;
+    $stmt->close();
+    $conn->close();
 }
-
-
-sqlsrv_close($conn);
 ?>

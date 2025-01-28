@@ -1,15 +1,14 @@
 <?php
-$serverName = "DESKTOP-AQ35H71\SQLEXPRESS";
+$host = 'localhost'; 
+$dbname = 'gallery_project'; 
+$username = 'root'; 
+$password = '11223344vV'; // Your MySQL password (replace with actual password if set)
 
+// Create connection
+$conn = new mysqli($host, $username, $password, $dbname);
 
-$connectionOptions = [
-    "Database" => "GalleryProject",
-    "TrustServerCertificate" => true, // windows authentication /not pass
-];
-
-$conn = sqlsrv_connect($serverName, $connectionOptions);
-
-if (!$conn) {
-    die(print_r(sqlsrv_errors(), true));
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
 ?>

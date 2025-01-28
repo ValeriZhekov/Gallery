@@ -1,226 +1,179 @@
 <?php
 session_start();
-
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
-require_once 'db_config.php';
+include 'db_config.php';
 
-$username = $_SESSION['username'];
-//fetch user ID
-$query = "SELECT id FROM Users WHERE username = ?";
-$params = [$username];
-$stmt = sqlsrv_query($conn, $query, $params);
-
-if ($stmt === false) {
-    die(print_r(sqlsrv_errors(), true));
-}
-
-$user_id = null;
-if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-    $user_id = $row['id'];
-} else {
-    die("User not found.");
-}
-sqlsrv_free_stmt($stmt);
-
-// handle Create Gallery
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_gallery'])) {
-    $gallery_name = trim($_POST['gallery_name']);
-
-    if (!empty($gallery_name)) {
-        $query = "INSERT INTO Galleries (name, user_id) VALUES (?, ?)";
-        $params = [$gallery_name, $user_id];
-        $stmt = sqlsrv_query($conn, $query, $params);
-
-        if ($stmt === false) {
-            die(print_r(sqlsrv_errors(), true));
-        }
-        sqlsrv_free_stmt($stmt);
-    }
-}
-
-// handle Upload Image
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_image'])) {
-    $gallery_id = $_POST['gallery_id'];
-    $target_dir = "uploads/";
-    $target_file = $target_dir . time() . basename($_FILES["image"]["name"]);
-    $upload_ok = 1;
-
-    // move the uploaded file to the server
-    if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-        $query = "INSERT INTO Images (file_path, gallery_id) VALUES (?, ?)";
-        $params = [$target_file, $gallery_id];
-        $stmt = sqlsrv_query($conn, $query, $params);
-
-        if ($stmt === false) {
-            die(print_r(sqlsrv_errors(), true));
-        }
-        sqlsrv_free_stmt($stmt);
-    } else {
-        echo "Error uploading image.";
-    }
-}
-
-// fetch galleries for the user after each post
-$query = "SELECT id, name FROM Galleries WHERE user_id = ?";
-$params = [$user_id];
-$stmt = sqlsrv_query($conn, $query, $params);
-
-$galleries = [];
-if ($stmt !== false) {
-    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-        $galleries[] = $row;
-    }
-}
-sqlsrv_free_stmt($stmt);
-
-// handle Merge Galleries
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['merge_galleries'])) {
-    $source_gallery = $_POST['source_gallery'];
-    $destination_gallery = $_POST['destination_gallery'];
-
-    if (!empty($source_gallery) && !empty($destination_gallery) && $source_gallery !== $destination_gallery) {
-        //add images to destination gallery
-        $query = "UPDATE Images SET gallery_id = ? WHERE gallery_id = ?";
-        $params = [$destination_gallery, $source_gallery];
-        $stmt = sqlsrv_query($conn, $query, $params);
-
-        if ($stmt === false) {
-            die(print_r(sqlsrv_errors(), true));
-        }
-        sqlsrv_free_stmt($stmt);
-
-        //remove the source gallery
-        $query = "DELETE FROM Galleries WHERE id = ?";
-        $params = [$source_gallery];
-        $stmt = sqlsrv_query($conn, $query, $params);
-
-        if ($stmt === false) {
-            die(print_r(sqlsrv_errors(), true));
-        }
-        sqlsrv_free_stmt($stmt);
-
-        // remove the source gallery from the $galleries array
-        foreach ($galleries as $key => $gallery) {
-            if ($gallery['id'] == $source_gallery) {
-                unset($galleries[$key]);
-                break;
-            }
-        }
-        //  reindex the array 
-        $galleries = array_values($galleries);
-
-        echo "<p style='color: green;'>Galleries merged successfully!</p>";
-    } else {
-        echo "<p style='color: red;'>Please select two different galleries to merge.</p>";
-    }
-}
+// Fetch user galleries
+$userId = $_SESSION['user_id'];
+$stmt = $conn->prepare("SELECT * FROM Galleries WHERE user_id = ?");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$galleries = $stmt->get_result();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Photo Gallery</title>
+    <title>Gallery</title>
     <link rel="stylesheet" href="gallery_styles.css">
 </head>
-
 <body>
     <div class="gallery-container">
-        <h1>Photo Gallery</h1>
+        <h1>Your Galleries</h1>
+
+        <!-- Create new gallery form -->
         <div class="form-section">
-
-            <form method="POST" action="">
-                <h3>Create a New Gallery</h3>
+            <h3>Create a New Gallery</h3>
+            <form action="create_gallery.php" method="POST">
                 <input type="text" name="gallery_name" placeholder="Gallery Name" required>
-                <button type="submit" name="create_gallery">Create Gallery</button>
+                <button type="submit">Create Gallery</button>
             </form>
+        </div>
 
-            <form method="POST" action="" enctype="multipart/form-data">
-                <h3>Upload an Image</h3>
-                <select name="gallery_id" required>
-                    <option value="">Select a Gallery</option>
-                    <?php foreach ($galleries as $gallery): ?>
-                        <option value="<?php echo $gallery['id']; ?>"><?php echo htmlspecialchars($gallery['name']); ?>
-                        </option>
-                    <?php endforeach; ?>
+        <!-- Image upload form -->
+        <div class="form-section">
+            <h3>Upload an Image</h3>
+            <form action="upload_image.php" method="POST" enctype="multipart/form-data">
+                <label for="gallery">Select a Gallery:</label>
+                <select name="gallery_id" id="gallery" required>
+                    <option value="" disabled selected>Select a gallery</option>
+                    <?php while ($gallery = $galleries->fetch_assoc()): ?>
+                        <option value="<?= $gallery['id'] ?>"><?= htmlspecialchars($gallery['name']) ?></option>
+                    <?php endwhile; ?>
                 </select>
                 <input type="file" name="image" accept="image/*" required>
-                <button type="submit" name="upload_image">Upload Image</button>
+                <button type="submit">Upload Image</button>
             </form>
+        </div>
 
-            <form method="POST" action="">
-                <h3>Merge Two Galleries</h3>
+        <!-- Merge galleries form -->
+        <div class="form-section">
+            <h3>Merge Galleries</h3>
+            <form action="merge_galleries.php" method="POST">
                 <label for="source_gallery">Source Gallery:</label>
                 <select name="source_gallery" id="source_gallery" required>
-                    <option value="">Select Source Gallery</option>
-                    <?php foreach ($galleries as $gallery): ?>
-                        <option value="<?php echo $gallery['id']; ?>"><?php echo htmlspecialchars($gallery['name']); ?>
-                        </option>
-                    <?php endforeach; ?>
+                    <option value="" disabled selected>Select a source gallery</option>
+                    <?php
+                    $stmt->execute();
+                    $galleries = $stmt->get_result();
+                    while ($gallery = $galleries->fetch_assoc()): ?>
+                        <option value="<?= $gallery['id'] ?>"><?= htmlspecialchars($gallery['name']) ?></option>
+                    <?php endwhile; ?>
                 </select>
 
                 <label for="destination_gallery">Destination Gallery:</label>
                 <select name="destination_gallery" id="destination_gallery" required>
-                    <option value="">Select Destination Gallery</option>
-                    <?php foreach ($galleries as $gallery): ?>
-                        <option value="<?php echo $gallery['id']; ?>"><?php echo htmlspecialchars($gallery['name']); ?>
-                        </option>
-                    <?php endforeach; ?>
+                    <option value="" disabled selected>Select a destination gallery</option>
+                    <?php
+                    $stmt->execute();
+                    $galleries = $stmt->get_result();
+                    while ($gallery = $galleries->fetch_assoc()): ?>
+                        <option value="<?= $gallery['id'] ?>"><?= htmlspecialchars($gallery['name']) ?></option>
+                    <?php endwhile; ?>
                 </select>
 
-                <button type="submit" name="merge_galleries">Merge Galleries</button>
+                <button type="submit">Merge Galleries</button>
             </form>
         </div>
-        <div class="gallery">
-            <h2>Your Galleries</h2>
-            <?php foreach ($galleries as $gallery): ?>
-                <h3><?php echo htmlspecialchars($gallery['name']); ?></h3>
-                <div class="gallery-images">
-                    <?php
-                    
-                    $query = "SELECT id, file_path FROM Images WHERE gallery_id = ?";
-                    $params = [$gallery['id']];
-                    $stmt = sqlsrv_query($conn, $query, $params);
+        <div class="form-section">
+    <h3>Import Images from Archive</h3>
+    <form action="import_archive.php" method="POST" enctype="multipart/form-data">
+        <label for="archive">Upload Archive (ZIP):</label>
+        <input type="file" name="archive" id="archive" accept=".zip" required>
 
-                    if ($stmt !== false):
-                        while ($image = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)):
-                            ?>
-                            <div class="image-container" data-id="<?php echo $image['id']; ?>">
-                                <img src="<?php echo htmlspecialchars($image['file_path']); ?>" alt="Gallery Image"
-                                    onclick="showLightbox('<?php echo htmlspecialchars($image['file_path']); ?>')">
-                                <button class="delete-btn" onclick="deleteImage(<?php echo $image['id']; ?>)">X</button>
-                            </div>
-                            <?php
-                        endwhile;
-                        sqlsrv_free_stmt($stmt);
-                    endif;
-                    ?>
-                </div>
-            <?php endforeach; ?>
-        </div>
+        <label for="import-gallery">Select a Gallery:</label>
+        <select name="gallery_id" id="import-gallery" required>
+            <option value="" disabled selected>Select a gallery</option>
+            <?php
+            $stmt->execute(); // Re-fetch galleries for the dropdown
+            $galleries = $stmt->get_result();
+            while ($gallery = $galleries->fetch_assoc()): ?>
+                <option value="<?= $gallery['id'] ?>"><?= htmlspecialchars($gallery['name']) ?></option>
+            <?php endwhile; ?>
+        </select>
 
-       
-        <div class="lightbox" id="lightbox">
-            <button class="close-btn" onclick="closeLightbox()">X</button>
-            <img id="lightbox-image" src="" alt="Enlarged Image">
-        </div>
-    </div>
+        <button type="submit">Import Images</button>
+    </form>
+</div>
+<div class="form-section">
+    <h3>Export Images</h3>
+    <form action="export_images.php" method="POST">
+        <label for="camera-model">Camera Model:</label>
+        <input type="text" name="camera_model" id="camera-model" placeholder="Optional">
 
-        <script src="gallery.js"></script>
+        <label for="year-from">Year Taken (From):</label>
+        <input type="number" name="year_from" id="year-from" placeholder="YYYY">
+
+        <label for="year-to">Year Taken (To):</label>
+        <input type="number" name="year_to" id="year-to" placeholder="YYYY">
+
+        <button type="submit">Export Images</button>
+    </form>
+</div>
 
 
-        <div class="logout">
-            <a href="logout.php">Logout</a>
-        </div>
-    </div>
-</body>
-
-</html>
-<?php
-sqlsrv_close($conn);
+        <!-- Display galleries and their images -->
+        <?php
+$stmt->execute(); // Re-execute to refresh gallery list
+$galleries = $stmt->get_result();
+if ($galleries->num_rows > 0): 
 ?>
+    <?php while ($gallery = $galleries->fetch_assoc()): ?>
+        <div class="gallery">
+            <h2><?= htmlspecialchars($gallery['name']) ?></h2>
+            <div class="gallery-images">
+                <?php
+                $galleryId = $gallery['id'];
+                $stmtImages = $conn->prepare("SELECT * FROM Images WHERE gallery_id = ?");
+                $stmtImages->bind_param("i", $galleryId);
+                $stmtImages->execute();
+                $images = $stmtImages->get_result();
+
+                if ($images->num_rows > 0):
+                    while ($image = $images->fetch_assoc()):
+                ?>
+                    <div class="image-container" data-id="<?= $image['id'] ?>">
+                        <img 
+                            src="<?= htmlspecialchars($image['file_path']) ?>" 
+                            alt="Gallery Image" 
+                            onclick="showImageModal('<?= htmlspecialchars($image['file_path']) ?>', '<?= $image['id'] ?>')"
+                        >
+                        <button class="delete-btn" onclick="deleteImage(<?= $image['id'] ?>)">X</button>
+                    </div>
+                <?php
+                    endwhile;
+                else:
+                ?>
+                    <p>No images in this gallery.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endwhile; ?>
+<?php else: ?>
+    <p>No galleries found. Create a new gallery to get started!</p>
+<?php endif; ?>
+
+<!-- Modal for Fullscreen Image and Metadata -->
+<div id="image-modal" class="modal">
+    <div class="modal-content">
+        <img id="modal-image" src="" alt="Full Image">
+        <div class="metadata" id="image-metadata"></div>
+        <button class="modal-close" onclick="closeImageModal()">Close</button>
+    </div>
+</div>
+
+        <!-- Logout button -->
+        <div class="logout-container">
+            <a href="logout.php" class="logout">Logout</a>
+        </div>
+    </div>
+
+    <script src="gallery.js"></script>
+</body>
+</html>
